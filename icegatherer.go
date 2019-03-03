@@ -17,7 +17,8 @@ type ICEGatherer struct {
 
 	validatedServers []*ice.URL
 
-	agent *ice.Agent
+	agent      *ice.Agent
+	ignoreIPv6 bool
 
 	api *API
 }
@@ -26,7 +27,7 @@ type ICEGatherer struct {
 // This constructor is part of the ORTC API. It is not
 // meant to be used together with the basic WebRTC API.
 func (api *API) NewICEGatherer(opts ICEGatherOptions) (*ICEGatherer, error) {
-	validatedServers := []*ice.URL{}
+	var validatedServers []*ice.URL
 	if len(opts.ICEServers) > 0 {
 		for _, server := range opts.ICEServers {
 			url, err := server.validate()
@@ -40,6 +41,7 @@ func (api *API) NewICEGatherer(opts ICEGatherOptions) (*ICEGatherer, error) {
 	return &ICEGatherer{
 		state:            ICEGathererStateNew,
 		validatedServers: validatedServers,
+		ignoreIPv6:       opts.IgnoreIPv6,
 		api:              api,
 	}, nil
 }
@@ -57,6 +59,7 @@ func (g *ICEGatherer) Gather() error {
 	defer g.lock.Unlock()
 
 	config := &ice.AgentConfig{
+		IgnoreIPv6:        g.ignoreIPv6,
 		Urls:              g.validatedServers,
 		PortMin:           g.api.settingEngine.ephemeralUDP.PortMin,
 		PortMax:           g.api.settingEngine.ephemeralUDP.PortMax,

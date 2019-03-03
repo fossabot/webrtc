@@ -118,6 +118,10 @@ type AgentConfig struct {
 	// when this is nil, it defaults to 10 seconds.
 	// A keepalive interval of 0 means we never send keepalive packets
 	KeepaliveInterval *time.Duration
+
+	// IgnoreIPv6 is an optional configuration for disabling support for ipv6
+	// server reflexive candidates. Default is false.
+	IgnoreIPv6 bool
 }
 
 // NewAgent creates a new Agent
@@ -158,7 +162,7 @@ func NewAgent(config *AgentConfig) (*Agent, error) {
 
 	// Initialize local candidates
 	a.gatherCandidatesLocal()
-	a.gatherCandidatesReflective(config.Urls)
+	a.gatherCandidatesReflective(config.Urls, config.IgnoreIPv6)
 
 	go a.taskLoop()
 	return a, nil
@@ -237,8 +241,14 @@ func (a *Agent) gatherCandidatesLocal() {
 	}
 }
 
-func (a *Agent) gatherCandidatesReflective(urls []*URL) {
+func (a *Agent) gatherCandidatesReflective(urls []*URL, ignoreIPv6 bool) {
 	for _, networkType := range supportedNetworkTypes {
+		if ignoreIPv6 &&
+			networkType == NetworkTypeUDP6 ||
+			networkType == NetworkTypeTCP6 {
+			continue
+		}
+
 		network := networkType.String()
 		for _, url := range urls {
 			switch url.Scheme {
